@@ -37,7 +37,7 @@ class StockInfoPipeline:
 
     def _create_table(self):
         """
-        Check if a structure of table is as same as setting.
+        Create table if needed.
 
         If table is not existed, create a new one.
         If structure of table is incorrect, rename it by adding '_old'

@@ -31,10 +31,7 @@ class StockInfoSpider(scrapy.Spider):
             value = [category]
             for td in tr.find_all("td", attrs={"bgcolor": "#FAFAD2"}):
                 value.append(td.text.strip() if td.text else None)
-
             value = value[:1] + value[1].split("\u3000") + value[2:]
             for name, value in zip(type_name, value):
                 stock[name] = value
-            if "remark" not in stock:
-                stock["remark"] = None
             yield stock

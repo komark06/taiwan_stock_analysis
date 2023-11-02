@@ -1,1 +1,2 @@
-Add primary key for stock_info and make sure them are unique.
+daily_trading:
+    Add length limit for parsing JSON.

@@ -163,19 +163,20 @@ class DailyTradingSpider(Spider):
         if js["stat"] != "OK":
             self.logger.warning(f"{response.url}:{response.text}")
             return
-        if self.generate_date(year, month) != js["date"]:
+        title = js["title"].strip()
+        date = re.split(r"\s+", title)[0]
+        if f"{year}/{month:02d}" != date:
             self.logger.warning(
                 f"Wrong date. Request_symbol:{request_symbol}, year:{year}"
-                f", month:{month}, url: {response.url}"
+                f", month:{month}, url: {response.url}\n{title}\n"
             )
             return
-        title = js["title"].strip()
         symbol = int(re.split(r"\s+", title)[-1])
         if request_symbol != symbol:
             self.logger.warning(
                 f"Wrong symbol. Request_symbol:{request_symbol}, "
-                f"symbol:{symbol}, year:{year}, month:{month}"
-                f", url: {response.url}"
+                f"symbol:{symbol}, year:{year}, month:{month}, "
+                f"url: {response.url}\n{title}\n"
             )
             return
         yield {"symbol": symbol, "fields": js["fields"], "data": js["data"]}

@@ -11,11 +11,9 @@ from scrapy.http import Response
 
 from ..pipelines import DailyTradingPipeline, StockInfoPipeline
 
-DailyTradingPipeline
-
 
 class DailyTradingSpider(Spider):
-    name = "test"
+    name = "daily_trading"
     custom_settings = {
         "DOWNLOAD_DELAY": 4,
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
@@ -92,16 +90,15 @@ class DailyTradingSpider(Spider):
 
             If exist, return True. Else, return False.
             """
+            if not self.connection:
+                return False
             table = DailyTradingPipeline.check_table_name
             data = {"year": year, "month": month, "symbol": symbol}
-            if (
-                self.connection
-                and self.connection.execute(
-                    f"SELECT * from {table} WHERE year=':year' AND "
-                    "month=':month' AND symbol=':symbol'",
-                    data,
-                ).fetchone()
-            ):
+            if self.connection.execute(
+                f"SELECT * from {table} WHERE year=:year AND "
+                "month=:month AND symbol=:symbol",
+                data,
+            ).fetchone():
                 return True
             return False
 

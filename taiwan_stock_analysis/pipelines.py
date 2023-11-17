@@ -115,16 +115,17 @@ class DailyTradingPipeline:
     output_folder_name = "output"
     db_name = "stock_daily.db"
 
-    def open_spider(self, spider):
-        current_folder = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(current_folder, self.output_folder_name)
-        os.makedirs(output_path, exist_ok=True)
-        self.db_path = os.path.join(output_path, self.db_name)
-        self.connection = sqlite3.connect(self.db_path)
-        self.cursor = self.connection.cursor()
-        self.create_table_query = self._create_table_command()
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self._create_table()
+    def _create_check_table(self):
+        """
+        Create check table if needed.
+
+        NOTE: It doesn't check the format of check table.
+        """
+        command = (
+            f"CREATE TABLE IF NOT EXISTS {self.check_table_name} "
+            "(symbol INTEGER, year INTEGER, month INTEGER, update_time TEXT)"
+        )
+        self.cursor.execute(command)
 
     def _create_table(self):
         """
@@ -153,11 +154,6 @@ class DailyTradingPipeline:
                 f"ALTER TABLE {self.table_name} RENAME TO {new_table_name}"
             )
             self.cursor.execute(self.create_table_query)
-        s = (
-            f"CREATE TABLE IF NOT EXISTS {self.check_table_name} "
-            "(symbol INTEGER, year INTEGER, month INTEGER, update_time TEXT)"
-        )
-        self.cursor.execute(s)
 
     def _create_table_command(self):
         """
@@ -191,6 +187,18 @@ class DailyTradingPipeline:
         self.commit()
         self.connection.close()
 
+    def open_spider(self, spider):
+        current_folder = os.path.dirname(os.path.abspath(__file__))
+        output_path = os.path.join(current_folder, self.output_folder_name)
+        os.makedirs(output_path, exist_ok=True)
+        self.db_path = os.path.join(output_path, self.db_name)
+        self.connection = sqlite3.connect(self.db_path)
+        self.cursor = self.connection.cursor()
+        self.create_table_query = self._create_table_command()
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self._create_table()
+        self._create_check_table()
+
     def process_item(self, item, spider):
         symbol = item["symbol"]
         data_list = item["data"]
@@ -213,7 +221,7 @@ class DailyTradingPipeline:
         if current.year != year or current.month != month:
             self.cursor.execute(
                 f"INSERT OR REPLACE INTO {self.check_table_name} "
-                "(symbol, year, month, update_time) VALUES (?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?)",
                 (symbol, year, month, current.strftime("%Y/%m/%d/%H:%M")),
             )
             self.logger.info(f"{symbol} {year}/{month} is done.")

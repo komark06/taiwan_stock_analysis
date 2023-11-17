@@ -123,7 +123,8 @@ class DailyTradingPipeline:
         """
         command = (
             f"CREATE TABLE IF NOT EXISTS {self.check_table_name} "
-            "(symbol INTEGER, year INTEGER, month INTEGER, update_time TEXT)"
+            "(symbol INTEGER, year INTEGER, month INTEGER, update_time TEXT ,"
+            "PRIMARY KEY(symbol, year, month))"
         )
         self.cursor.execute(command)
 

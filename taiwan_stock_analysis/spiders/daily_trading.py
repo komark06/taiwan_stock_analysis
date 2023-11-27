@@ -134,10 +134,6 @@ class DailyTradingSpider(Spider):
                             "request_symbol": symbol,
                         },
                     )
-                else:
-                    self.logger.info(
-                        f"{symbol} {year}/{month} already exists. Pass it."
-                    )
                 year, month = next_month(year, month)
 
     def generate_date(self, year: int, month: int):

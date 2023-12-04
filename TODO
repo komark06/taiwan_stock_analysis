@@ -1,2 +1,2 @@
-daily_trading:
-    Add length limit for parsing JSON.
+Make docker build faster
+Make docker image smalller: Use multistage?

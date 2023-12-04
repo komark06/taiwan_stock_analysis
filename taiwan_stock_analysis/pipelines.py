@@ -3,62 +3,39 @@ import os
 import sqlite3
 from datetime import datetime, timedelta
 
+import mariadb
+
 
 class StockInfoPipeline:
     data_type = {
-        "classification": ("TEXT",),
-        "symbol": ("TEXT",),
-        "name": ("TEXT",),
-        "ISINCode": ("TEXT",),
-        "listing_date": ("TEXT",),
-        "market_category": ("TEXT",),
-        "industry_category": ("TEXT",),
-        "CFICode": ("TEXT",),
-        "remark": ("TEXT",),
+        "classification": ("VARCHAR(25)",),
+        "symbol": ("VARCHAR(25)",),
+        "name": ("VARCHAR(25)",),
+        "ISINCode": ("VARCHAR(25)",),
+        "listing_date": ("VARCHAR(25)",),
+        "market_category": ("VARCHAR(25)",),
+        "industry_category": ("VARCHAR(25)",),
+        "CFICode": ("VARCHAR(25)",),
+        "remark": ("VARCHAR(25)",),
     }
     primary_key = ("symbol", "name")
     output_folder_name = "output"
-    db_name = "stock_info.db"
     table_name = "stock_info"
 
     def open_spider(self, spider):
-        current_folder = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(current_folder, self.output_folder_name)
-        os.makedirs(output_path, exist_ok=True)
-        self.db_path = os.path.join(output_path, self.db_name)
-        self.connection = sqlite3.connect(self.db_path)
+        password_file = "/run/secrets/db-password"
+        with open(password_file, "r") as ps:
+            self.connection = mariadb.connect(
+                user="root",
+                password=ps.read(),
+                host="db",
+                database="example",
+            )
         self.cursor = self.connection.cursor()
         self.create_table_query = self._create_table_command()
         self.logger = logging.getLogger(self.__class__.__name__)
-        self._create_table()
-
-    def _create_table(self):
-        """
-        Create table if needed.
-
-        If table is not existed, create a new one.
-        If structure of table is incorrect, rename it by adding '_old'
-        suffix and then create a new one.
-        """
-        self.cursor.execute(
-            "SELECT sql FROM sqlite_master WHERE tbl_name = "
-            f"'{self.table_name}'"
-        )
-        data = self.cursor.fetchall()
-        if len(data) == 0:
-            self.cursor.execute(self.create_table_query)
-            return
-        query = data[0][0]
-        if query != self.create_table_query:
-            new_table_name = self.table_name + "_old"
-            self.logger.info(
-                f"Structure of {self.table_name} is incorrect."
-                f"Rename it to {new_table_name} and create a new one."
-            )
-            self.cursor.execute(
-                f"ALTER TABLE {self.table_name} RENAME TO {new_table_name}"
-            )
-            self.cursor.execute(self.create_table_query)
+        self.logger.info(self._create_table_command())
+        self.cursor.execute(self._create_table_command())
 
     def _create_table_command(self):
         """
@@ -72,7 +49,10 @@ class StockInfoPipeline:
             columns.append(" ".join(column))
         if self.primary_key:
             columns.append(f"PRIMARY KEY ({', '.join(self.primary_key)})")
-        return f"CREATE TABLE {self.table_name} ({', '.join(columns)})"
+        return (
+            f"CREATE TABLE IF NOT EXISTS"
+            f"{self.table_name} ({', '.join(columns)})"
+        )
 
     def add(self, *data):
         if not data:
@@ -90,7 +70,6 @@ class StockInfoPipeline:
         self.connection.close()
 
     def process_item(self, item, spider):
-        self.add(*item.values())
         return item
 
 

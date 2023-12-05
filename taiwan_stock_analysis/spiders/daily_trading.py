@@ -1,11 +1,10 @@
 import json
-import os
 import random
 import re
-import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
+import mariadb
 from scrapy import Request, Spider
 from scrapy.http import Response
 
@@ -28,49 +27,27 @@ class DailyTradingSpider(Spider):
 
     def __init__(self, name: str | None = None, **kwargs: Any):
         super().__init__(name, **kwargs)
-        upper_folder = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__))
-        )
-        db_folder = DailyTradingPipeline.output_folder_name
-        db_name = DailyTradingPipeline.db_name
-        db_path = os.path.join(upper_folder, db_folder, db_name)
-        if os.path.exists(db_path):
-            url_path = f"file:{db_path}?mode=ro"
-            table = DailyTradingPipeline.check_table_name
-            con = sqlite3.connect(url_path)
-            cur = con.execute(
-                "SELECT name FROM sqlite_master WHERE name = ?", (table,)
+        password_file = "/run/secrets/db-password"
+        with open(password_file, "r") as ps:
+            self.connection = mariadb.connect(
+                user="root",
+                password=ps.read(),
+                host="db",
+                database="example",
             )
-            if not cur.fetchone():
-                con.close()
-                self.connection = None
-            else:
-                self.connection = con
-        else:
-            self.connection = None
+        self.cursor = self.connection.cursor()
 
     def start_requests(self):
         def get_symbols():
             """
             Get all informations of symbols.
             """
-            upper_folder = os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__))
-            )
-            db_folder = StockInfoPipeline.output_folder_name
-            db_name = StockInfoPipeline.db_name
-            db_path = os.path.join(upper_folder, db_folder, db_name)
-            url_path = f"file:{db_path}?mode=ro"
             table = StockInfoPipeline.table_name
-            con = sqlite3.connect(url_path)
-            symbols = [
-                (int(item[0]), item[1])
-                for item in con.execute(
-                    f"SELECT symbol,listing_date FROM {table} "
-                    "WHERE classification='股票'"
-                )
-            ]
-            con.close()
+            self.cursor.execute(
+                f"SELECT symbol,listing_date FROM {table} "
+                "WHERE classification='股票'"
+            )
+            symbols = [(int(item[0]), item[1]) for item in self.cursor]
             return symbols
 
         def next_month(year: int, month: int):
@@ -90,15 +67,14 @@ class DailyTradingSpider(Spider):
 
             If exist, return True. Else, return False.
             """
-            if not self.connection:
-                return False
             table = DailyTradingPipeline.check_table_name
-            data = {"year": year, "month": month, "symbol": symbol}
-            if self.connection.execute(
-                f"SELECT * from {table} WHERE year=:year AND "
-                "month=:month AND symbol=:symbol",
+            data = (year, month, symbol)
+            self.cursor.execute(
+                f"SELECT * from {table} WHERE year=? AND "
+                "month=? AND symbol=?",
                 data,
-            ).fetchone():
+            )
+            if self.cursor.fetchone():
                 return True
             return False
 

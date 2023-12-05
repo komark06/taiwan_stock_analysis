@@ -11,6 +11,7 @@ runner = CrawlerRunner(settings)
 @defer.inlineCallbacks
 def crawl():
     yield runner.crawl("stock_info")
+    yield runner.crawl("daily_trading")
     reactor.stop()
 
 

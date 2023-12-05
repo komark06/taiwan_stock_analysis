@@ -1,6 +1,4 @@
 import logging
-import os
-import sqlite3
 from datetime import datetime, timedelta
 
 import mariadb
@@ -19,7 +17,7 @@ class StockInfoPipeline:
         "remark": ("VARCHAR(25)",),
     }
     primary_key = ("symbol", "name")
-    output_folder_name = "output"
+    primary_key = ("name",)
     table_name = "stock_info"
 
     def open_spider(self, spider):
@@ -34,7 +32,6 @@ class StockInfoPipeline:
         self.cursor = self.connection.cursor()
         self.create_table_query = self._create_table_command()
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.info(self._create_table_command())
         self.cursor.execute(self._create_table_command())
 
     def _create_table_command(self):
@@ -50,7 +47,7 @@ class StockInfoPipeline:
         if self.primary_key:
             columns.append(f"PRIMARY KEY ({', '.join(self.primary_key)})")
         return (
-            f"CREATE TABLE IF NOT EXISTS"
+            "CREATE TABLE IF NOT EXISTS "
             f"{self.table_name} ({', '.join(columns)})"
         )
 
@@ -60,45 +57,50 @@ class StockInfoPipeline:
         if len(data) != len(self.data_type):
             raise ValueError("Data items do not match table columns.")
         placeholders = ", ".join(["?" for _ in data])
-        insert_sql = (
-            f"INSERT OR REPLACE INTO {self.table_name} VALUES ({placeholders})"
-        )
-        self.cursor.execute(insert_sql, data)
-
-    def close_spider(self, spider):
-        self.connection.commit()
-        self.connection.close()
+        sql_query = f"INSERT INTO {self.table_name} VALUES ({placeholders})"
+        if self.primary_key:
+            sql_query = (
+                sql_query
+                + " ON DUPLICATE KEY UPDATE "
+                + ", ".join(
+                    f"{column} = VALUES({column})"
+                    for column in self.primary_key
+                )
+            )
+        self.cursor.execute(sql_query, data)
 
     def process_item(self, item, spider):
+        self.add(*item.values())
         return item
+
+    def close_spider(self, spider):
+        self.cursor.close()
+        self.connection.commit()
+        self.connection.close()
 
 
 class DailyTradingPipeline:
     data_type = {
-        "symbol": ("INTEGER",),
-        "year": ("INTEGER",),
-        "month": ("INTEGER",),
-        "day": ("INTEGER",),
-        "volume": ("INTEGER",),
-        "value": ("INTEGER",),
-        "open": ("REAL",),
-        "highest": ("REAL",),
-        "lowest": ("REAL",),
-        "closing": ("REAL",),
-        "change": ("TEXT",),
+        "symbol": ("SMALLINT", "UNSIGNED"),
+        "year": ("SMALLINT", "UNSIGNED"),
+        "month": ("TINYINT", "UNSIGNED"),
+        "day": ("TINYINT", "UNSIGNED"),
+        "volume": ("BIGINT", "UNSIGNED"),
+        "value": ("BIGINT", "UNSIGNED"),
+        "open": ("DECIMAL(5, 3)",),
+        "highest": ("DECIMAL(5, 3)",),
+        "lowest": ("DECIMAL(5, 3)",),
+        "closing": ("DECIMAL(5, 3)",),
+        "delta": ("VARCHAR(10)",),
         "transaction_volume": ("INTEGER",),
     }
     primary_key = ("symbol", "year", "month", "day")
     table_name = "stock_daily_trading"
     check_table_name = "check_table"
-    output_folder_name = "output"
-    db_name = "stock_daily.db"
 
     def _create_check_table(self):
         """
         Create check table if needed.
-
-        NOTE: It doesn't check the format of check table.
         """
         command = (
             f"CREATE TABLE IF NOT EXISTS {self.check_table_name} "
@@ -106,34 +108,6 @@ class DailyTradingPipeline:
             "PRIMARY KEY(symbol, year, month))"
         )
         self.cursor.execute(command)
-
-    def _create_table(self):
-        """
-        Create table if needed.
-
-        If table is not existed, create a new one.
-        If structure of table is incorrect, rename it by adding '_old'
-        suffix and then create a new one.
-        """
-        self.cursor.execute(
-            "SELECT sql FROM sqlite_master WHERE tbl_name = "
-            f"'{self.table_name}'"
-        )
-        data = self.cursor.fetchall()
-        if len(data) == 0:
-            self.cursor.execute(self.create_table_query)
-            return
-        query = data[0][0]
-        if query != self.create_table_query:
-            new_table_name = self.table_name + "_old"
-            self.logger.info(
-                f"Structure of {self.table_name} is incorrect."
-                f"Rename it to {new_table_name} and create a new one."
-            )
-            self.cursor.execute(
-                f"ALTER TABLE {self.table_name} RENAME TO {new_table_name}"
-            )
-            self.cursor.execute(self.create_table_query)
 
     def _create_table_command(self):
         """
@@ -143,11 +117,28 @@ class DailyTradingPipeline:
         for name, statement in self.data_type.items():
             column = [name]
             if statement:
-                column.append(*statement)
+                column.extend(statement)
             columns.append(" ".join(column))
         if self.primary_key:
             columns.append(f"PRIMARY KEY ({', '.join(self.primary_key)})")
-        return f"CREATE TABLE {self.table_name} ({', '.join(columns)})"
+        return (
+            f"CREATE TABLE IF NOT EXISTS {self.table_name} "
+            f"({', '.join(columns)})"
+        )
+
+    def open_spider(self, spider):
+        password_file = "/run/secrets/db-password"
+        with open(password_file, "r") as ps:
+            self.connection = mariadb.connect(
+                user="root",
+                password=ps.read(),
+                host="db",
+                database="example",
+            )
+        self.cursor = self.connection.cursor()
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.cursor.execute(self._create_table_command())
+        self._create_check_table()
 
     def add(self, *data):
         if not data:
@@ -155,29 +146,20 @@ class DailyTradingPipeline:
         if len(data) != len(self.data_type):
             raise ValueError("Data items do not match table columns.")
         placeholders = ", ".join(["?" for _ in data])
-        insert_sql = (
-            f"INSERT OR REPLACE INTO {self.table_name} VALUES ({placeholders})"
-        )
-        self.cursor.execute(insert_sql, data)
+        sql_query = f"INSERT INTO {self.table_name} VALUES ({placeholders})"
+        if self.primary_key:
+            sql_query = (
+                sql_query
+                + " ON DUPLICATE KEY UPDATE "
+                + ", ".join(
+                    f"{column} = VALUES({column})"
+                    for column in self.primary_key
+                )
+            )
+        self.cursor.execute(sql_query, data)
 
     def commit(self):
         self.connection.commit()
-
-    def close_spider(self, spider):
-        self.commit()
-        self.connection.close()
-
-    def open_spider(self, spider):
-        current_folder = os.path.dirname(os.path.abspath(__file__))
-        output_path = os.path.join(current_folder, self.output_folder_name)
-        os.makedirs(output_path, exist_ok=True)
-        self.db_path = os.path.join(output_path, self.db_name)
-        self.connection = sqlite3.connect(self.db_path)
-        self.cursor = self.connection.cursor()
-        self.create_table_query = self._create_table_command()
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self._create_table()
-        self._create_check_table()
 
     def process_item(self, item, spider):
         symbol = item["symbol"]
@@ -200,8 +182,10 @@ class DailyTradingPipeline:
         month = int(formatted_data["month"])
         if current.year != year or current.month != month:
             self.cursor.execute(
-                f"INSERT OR REPLACE INTO {self.check_table_name} "
-                "VALUES (?, ?, ?, ?)",
+                f"INSERT INTO {self.check_table_name} "
+                "VALUES (?, ?, ?, ?)  ON DUPLICATE KEY UPDATE "
+                "symbol = VALUES(symbol), year = VALUES(year), "
+                "month = VALUES(month)",
                 (symbol, year, month, current.strftime("%Y/%m/%d/%H:%M")),
             )
             self.logger.info(f"{symbol} {year}/{month} is done.")
@@ -212,3 +196,7 @@ class DailyTradingPipeline:
             )
         self.commit()
         return item
+
+    def close_spider(self, spider):
+        self.commit()
+        self.connection.close()

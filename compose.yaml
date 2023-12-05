@@ -9,6 +9,7 @@ services:
       start_period: 30s
     secrets:
       - db-password
+      - user-password
     volumes:
       - db-data:/var/lib/mysql
     networks:
@@ -16,6 +17,8 @@ services:
     environment:
       - MYSQL_DATABASE=example
       - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
+      - MYSQL_USER=eva
+      - MYSQL_PASSWORD_FILE=/run/secrets/user-password
     expose:
       - 3306
       - 33060
@@ -39,6 +42,8 @@ volumes:
 secrets:
   db-password:
     file: db/password.txt
+  user-password:
+    file: db/user-password.txt
 
 networks:
   backnet:

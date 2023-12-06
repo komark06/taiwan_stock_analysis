@@ -1,50 +1,54 @@
-services:
-  db:
-    image: mariadb:10-focal
-    restart: always
-    healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 --password="$$(cat /run/secrets/db-password)" --silent']
-      interval: 3s
-      retries: 5
-      start_period: 30s
-    secrets:
-      - db-password
-      - user-password
-    volumes:
-      - db-data:/var/lib/mysql
-    networks:
-      - backnet
-    environment:
-      - MYSQL_DATABASE=example
-      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db-password
-      - MYSQL_USER=eva
-      - MYSQL_PASSWORD_FILE=/run/secrets/user-password
-    expose:
-      - 3306
-      - 33060
-
-  app:
-    build:
-      context: .
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - PYTHONUNBUFFERED=1
-    secrets:
-      - db-password
-    networks:
-      - backnet
-
 volumes:
-  db-data:
+    db-data:
 
 secrets:
-  db-password:
-    file: db/password.txt
-  user-password:
-    file: db/user-password.txt
+    db-password:
+        file: db/password.txt
+    user-password:
+        file: db/user-password.txt
 
 networks:
-  backnet:
+    backnet:
+
+services:
+    db:
+        image: mariadb:lts
+        restart: always
+        healthcheck:
+            test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+            start_period: 1m
+            start_interval: 10s
+            interval: 3s
+            timeout: 5s
+            retries: 3
+        secrets:
+            - db-password
+            - user-password
+        volumes:
+            - db-data:/var/lib/mysql
+        networks:
+            - backnet
+        ports:
+            - 3306
+            - 33060
+        environment:
+            - TZ=Asia/Taipei
+            - MARIADB_DATABASE=example
+            - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db-password
+            # - MYSQL_USER=eva
+            # - MYSQL_PASSWORD_FILE=/run/secrets/user-password
+
+    app:
+        build:
+            context: .
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+          - TZ=Asia/Taipei
+          - PYTHONUNBUFFERED=1
+        secrets:
+          - db-password
+        networks:
+          - backnet
 

@@ -7,6 +7,7 @@ name = "pypi"
 scrapy = "*"
 beautifulsoup4 = "*"
 lxml = "*"
+twisted = ">=23.10"
 
 [dev-packages]
 

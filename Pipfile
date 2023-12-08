@@ -8,6 +8,7 @@ scrapy = "*"
 beautifulsoup4 = "*"
 lxml = "*"
 twisted = ">=23.10"
+mariadb = "*"
 
 [dev-packages]
 

@@ -28,7 +28,7 @@ services:
             - db-data:/var/lib/mysql
         networks:
             - backnet
-        ports:
+        expose:
             - 3306
             - 33060
         environment:
@@ -45,10 +45,25 @@ services:
             db:
                 condition: service_healthy
         environment:
-          - TZ=Asia/Taipei
-          - PYTHONUNBUFFERED=1
+            - TZ=Asia/Taipei
+            - PYTHONUNBUFFERED=1
         secrets:
-          - db-password
+            - db-password
         networks:
-          - backnet
+            - backnet
+
+    backup:
+        build:
+          context: backup
+        depends_on:
+            db:
+                condition: service_healthy
+        environment:
+            - TZ=Asia/Taipei
+        secrets:
+            - db-password
+        volumes:
+            - ./data:/data
+        networks:
+            - backnet
 

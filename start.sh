@@ -12,9 +12,9 @@ else
     time mariadb --host=db --user=root --password=$(cat /run/secrets/db-password) -D example < $sql_file
     date="$(date '+%Y-%m-%d %H:%M:%S')"
     if [ $? -eq 0 ]; then
-        echo "$date :Init succeed."
+        echo "$date: Init succeed."
     else
-        echo "$date :Init FAIL!"
+        echo "$date: Init FAIL!"
         exit 1
     fi
 fi

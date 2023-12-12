@@ -87,10 +87,10 @@ class DailyTradingPipeline:
         "day": ("TINYINT", "UNSIGNED"),
         "volume": ("BIGINT", "UNSIGNED"),
         "value": ("BIGINT", "UNSIGNED"),
-        "open": ("DECIMAL(5, 3)",),
-        "highest": ("DECIMAL(5, 3)",),
-        "lowest": ("DECIMAL(5, 3)",),
-        "closing": ("DECIMAL(5, 3)",),
+        "open": ("DECIMAL(8, 3)",),
+        "highest": ("DECIMAL(8, 3)",),
+        "lowest": ("DECIMAL(8, 3)",),
+        "closing": ("DECIMAL(8, 3)",),
         "delta": ("VARCHAR(10)",),
         "transaction_volume": ("INTEGER",),
     }
@@ -175,8 +175,17 @@ class DailyTradingPipeline:
                 )
             )
             for name, value in zip(fields[1:], data[1:]):
-                formatted_data[name] = value.replace(",", "")
-            self.add(*formatted_data.values())
+                if value == "--":
+                    formatted_data[name] = None
+                else:
+                    formatted_data[name] = value.replace(",", "")
+            try:
+                self.add(*formatted_data.values())
+            except mariadb.DataError as exp:
+                self.logger.warn(exp)
+                self.logger.warn(formatted_data)
+                raise exp
+
         current = datetime.utcnow() + timedelta(hours=8)  # Current taipei time
         year = int(formatted_data["year"])
         month = int(formatted_data["month"])

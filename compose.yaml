@@ -49,6 +49,8 @@ services:
             - PYTHONUNBUFFERED=1
         secrets:
             - db-password
+        volumes:
+            - ./data:/data
         networks:
             - backnet
 

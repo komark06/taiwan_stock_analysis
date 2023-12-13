@@ -3,6 +3,8 @@
 # Program:
 #       If init.sql exists, we copy it into mariadb.
 
+set -euo pipefail
+
 sql_file="/data/backup.sql"
 if [ ! -e "$sql_file" ]; then
     echo "The file $sql_file does not exist."
@@ -19,4 +21,6 @@ else
     fi
 fi
 
-pipenv run python3 run.py
+touch $HOME/ready
+
+python run.py

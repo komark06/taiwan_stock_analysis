@@ -71,6 +71,7 @@ class StockInfoPipeline:
 
     def process_item(self, item, spider):
         self.add(*item.values())
+        self.logger.info(item)
         return item
 
     def close_spider(self, spider):

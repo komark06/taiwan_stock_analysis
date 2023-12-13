@@ -1,19 +1,27 @@
-from scrapy.crawler import CrawlerRunner
-from scrapy.utils.log import configure_logging
-from scrapy.utils.project import get_project_settings
-from twisted.internet import defer, reactor
+import subprocess
+from concurrent.futures import ProcessPoolExecutor
 
-settings = get_project_settings()
-configure_logging(settings)
-runner = CrawlerRunner(settings)
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 
-@defer.inlineCallbacks
-def crawl():
-    yield runner.crawl("stock_info")
-    yield runner.crawl("daily_trading")
-    reactor.stop()
+def stock_daily():
+    subprocess.run(["scrapy", "crawl", "daily_trading"])
 
 
-crawl()
-reactor.run()
+def stock_info():
+    subprocess.run(["scrapy", "crawl", "stock_info"])
+
+
+if __name__ == "__main__":
+    stock_info()
+    stock_daily()
+    executors = {
+        "default": ProcessPoolExecutor(2),
+    }
+    scheduler = BlockingScheduler(timezone="Asia/Taipei", executors=executors)
+    scheduler.add_job(stock_info, "cron", hour=0)
+    scheduler.add_job(stock_daily, "cron", hour=18)
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown(wait=False)

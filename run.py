@@ -2,6 +2,7 @@ import subprocess
 from concurrent.futures import ProcessPoolExecutor
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.executors.pool import ProcessPoolExecutor
 
 
 def stock_daily():

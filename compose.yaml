@@ -3,7 +3,7 @@ volumes:
 
 secrets:
     db-password:
-        file: db/password
+        file: db/db-password
     user-password:
         file: db/user-password
 

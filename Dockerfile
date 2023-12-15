@@ -33,11 +33,9 @@ RUN python -c "import mariadb; print(mariadb.__version__)"
 
 WORKDIR /app
 
-COPY run.py scrapy.cfg  start.sh .
+COPY run.py scrapy.cfg .
 
 COPY taiwan_stock_analysis ./taiwan_stock_analysis
-
-RUN chmod +x start.sh
 
 # Create a non-root user named "eva"
 RUN useradd -m eva
@@ -45,5 +43,5 @@ RUN useradd -m eva
 # Switch to the "eva" user
 USER eva
 
-CMD ["/bin/bash", "/app/start.sh"]
+CMD ["python", "/app/run.py"]
 

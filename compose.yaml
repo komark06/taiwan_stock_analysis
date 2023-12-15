@@ -3,9 +3,9 @@ volumes:
 
 secrets:
     db-password:
-        file: db/password.txt
+        file: db/password
     user-password:
-        file: db/user-password.txt
+        file: db/user-password
 
 networks:
     backnet:

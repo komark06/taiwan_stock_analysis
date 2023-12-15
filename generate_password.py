@@ -15,7 +15,7 @@ if not (os.path.exists(folder) and os.path.isdir(folder)):
     os.mkdir(folder)
 min_length = 8  # Minimum length of the password
 max_length = 16  # Maximum length of the password
-password_file = ["password.txt", "user-password.txt"]
+password_file = ["db-password", "user-password"]
 for file in password_file:
     path = os.path.join(folder, file)
     with open(path, "w", encoding="ascii") as fw:

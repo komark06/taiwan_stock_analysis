@@ -11,6 +11,10 @@ from apscheduler.executors.pool import ProcessPoolExecutor
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+def ready():
+    ready_path = os.path.join(os.path.expanduser("~"), "ready")
+    with open(ready_path, "w") as file:
+        pass
 
 def init_database():
     sql_file = "/data/backup.sql"
@@ -39,9 +43,6 @@ def init_database():
     else:
         print(f"{now()}: Init FAIL!")
         sys.exit(1)
-    ready_path = os.path.join(os.path.expanduser("~"), "ready")
-    with open(ready_path, "w") as file:
-        pass
 
 
 def stock_daily():
@@ -54,6 +55,7 @@ def stock_info():
 
 if __name__ == "__main__":
     init_database()
+    ready()
     stock_info()
     stock_daily()
     executors = {

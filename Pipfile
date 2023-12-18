@@ -9,6 +9,8 @@ beautifulsoup4 = "*"
 lxml = "*"
 mariadb = "*"
 apscheduler = "*"
+pytest = "*"
+coverage = "*"
 
 [dev-packages]
 

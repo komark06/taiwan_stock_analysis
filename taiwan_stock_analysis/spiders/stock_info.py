@@ -10,7 +10,6 @@ class StockInfoSpider(scrapy.Spider):
         "ITEM_PIPELINES": {
             "taiwan_stock_analysis.pipelines.StockInfoPipeline": 300,
         },
-        "STOCK_INFO_OVERWRITE": True,
         "PARSER": "lxml",
     }
     start_urls = ["https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"]

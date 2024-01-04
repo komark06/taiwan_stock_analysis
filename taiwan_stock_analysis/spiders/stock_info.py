@@ -10,14 +10,12 @@ class StockInfoSpider(scrapy.Spider):
         "ITEM_PIPELINES": {
             "taiwan_stock_analysis.pipelines.StockInfoPipeline": 300,
         },
-        "PARSER": "lxml",
     }
     start_urls = ["https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"]
 
     def parse(self, response):
-        parser = self.settings.attributes["PARSER"].value
         type_name = list(StockInfoPipeline.data_type.keys())
-        soup = BeautifulSoup(response.text, parser)
+        soup = BeautifulSoup(response.text, "lxml")
         for tr in soup.find_all("tr"):
             if tr.find("td", attrs={"bgcolor": "#FAFAD2"}) is None:
                 continue

@@ -16,7 +16,6 @@ class StockInfoPipeline:
         "CFICode": ("VARCHAR(25)",),
         "remark": ("VARCHAR(25)",),
     }
-    primary_key = ("symbol", "name")
     primary_key = ("name",)
     table_name = "stock_info"
 

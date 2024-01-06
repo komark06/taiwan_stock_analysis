@@ -14,7 +14,7 @@ class StockInfoSpider(scrapy.Spider):
     start_urls = ["https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"]
 
     def parse(self, response):
-        type_name = list(StockInfoPipeline.data_type.keys())
+        type_name = StockInfoPipeline.data_type.keys()
         soup = BeautifulSoup(response.text, "lxml")
         for tr in soup.find_all("tr"):
             if tr.find("td", attrs={"bgcolor": "#FAFAD2"}) is None:

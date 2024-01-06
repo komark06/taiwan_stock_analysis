@@ -5,16 +5,16 @@ from datetime import datetime
 
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.executors.pool import ProcessPoolExecutor
 
 
 def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
 def ready():
     ready_path = os.path.join(os.path.expanduser("~"), "ready")
-    with open(ready_path, "w") as file:
-        pass
+    open(ready_path, "w").close()
+
 
 def init_database():
     sql_file = "/data/backup.sql"

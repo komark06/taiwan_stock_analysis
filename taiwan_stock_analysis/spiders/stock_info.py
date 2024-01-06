@@ -14,21 +14,21 @@ class StockInfoSpider(scrapy.Spider):
     start_urls = ["https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"]
 
     def parse(self, response):
-        type_name = StockInfoPipeline.data_type.keys()
+        type_names = StockInfoPipeline.data_type.keys()
         soup = BeautifulSoup(response.text, "lxml")
-        for tr in soup.find_all("tr"):
-            if tr.find("td", attrs={"bgcolor": "#FAFAD2"}) is None:
+        for td in soup.find_all("td", attrs={"bgcolor": "#FAFAD2"}):
+            if td.attrs.get("colspan"):
+                category = td.b.text.strip()
                 continue
-            if tr.find("td", attrs={"bgcolor": "#FAFAD2", "colspan": True}):
-                category = tr.find(
-                    "td", attrs={"bgcolor": "#FAFAD2", "colspan": True}
-                ).b.text.strip()
-                continue
-            stock = {}
-            value = [category]
-            for td in tr.find_all("td", attrs={"bgcolor": "#FAFAD2"}):
-                value.append(td.text.strip() if td.text else None)
-            value = value[:1] + value[1].split("\u3000") + value[2:]
-            for name, value in zip(type_name, value):
-                stock[name] = value
+            attributes = [category]
+            for element in td.parent.find_all("td"):
+                text = element.text.strip()
+                if "\u3000" in text:
+                    attributes.extend(text.split("\u3000"))
+                else:
+                    attributes.append(text or None)
+            stock = {
+                key: value
+                for key, value in zip(type_names, attributes, strict=True)
+            }
             yield stock

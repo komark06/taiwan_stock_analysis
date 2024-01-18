@@ -46,6 +46,9 @@ services:
         environment:
             - TZ=Asia/Taipei
             - PYTHONUNBUFFERED=1
+            - MARIADB_HOST=db
+            - MARIADB_DATABASE=example
+            - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db-password
         secrets:
             - db-password
         volumes:

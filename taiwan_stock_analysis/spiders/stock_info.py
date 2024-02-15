@@ -1,5 +1,4 @@
 import scrapy
-from bs4 import BeautifulSoup
 
 from ..pipelines import StockInfoPipeline
 
@@ -15,18 +14,18 @@ class StockInfoSpider(scrapy.Spider):
 
     def parse(self, response):
         type_names = [column.name for column in StockInfoPipeline.data_type]
-        soup = BeautifulSoup(response.text, "lxml")
-        for td in soup.find_all("td", attrs={"bgcolor": "#FAFAD2"}):
-            if td.attrs.get("colspan"):
-                category = td.b.text.strip()
+        for tr in response.selector.xpath(".//tr[td[@bgcolor='#FAFAD2']]"):
+            found_category = tr.xpath("td[@colspan]/b/text()").get()
+            if found_category:
+                category = found_category.strip()
                 continue
             attributes = [category]
-            for element in td.parent.find_all("td"):
-                text = element.text.strip()
-                if "\u3000" in text:
-                    attributes.extend(text.split("\u3000"))
-                else:
-                    attributes.append(text or None)
+            for td in tr.xpath("td[@bgcolor='#FAFAD2']"):
+                text = td.xpath("text()").get()
+                attributes.append(text.strip() if text else None)
+            attributes = (
+                attributes[:1] + attributes[1].split("\u3000") + attributes[2:]
+            )
             stock = {
                 key: value
                 for key, value in zip(type_names, attributes, strict=True)

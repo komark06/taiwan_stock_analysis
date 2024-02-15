@@ -5,8 +5,6 @@ name = "pypi"
 
 [packages]
 scrapy = "*"
-beautifulsoup4 = "*"
-lxml = "*"
 mariadb = "*"
 apscheduler = "*"
 

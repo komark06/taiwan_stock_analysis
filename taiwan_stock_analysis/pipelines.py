@@ -16,6 +16,20 @@ from taiwan_stock_analysis.database.datatype import (
 from .database.mariadbclient import MariadbClient, MariadbTable
 
 
+def login_info() -> dict:
+    """Return login info of Mariadb"""
+    info = {"user": "root"}
+    password_file = os.getenv("MARIADB_ROOT_PASSWORD_FILE")
+    if password_file:
+        with open(password_file, "r") as file:
+            info["password"] = file.read()
+    else:
+        info["password"] = os.getenv("MARIADB_ROOT_PASSWORD")
+    info["host"] = os.getenv("MARIADB_HOST")
+    info["database"] = os.getenv("MARIADB_DATABASE")
+    return info
+
+
 class StockInfoPipeline:
     """
     A class for processing information of stock.
@@ -47,22 +61,8 @@ class StockInfoPipeline:
             spider: The spider instance.
         """
         table = MariadbTable(self.table_name, self.data_type)
-        user = "root"
-        password_file = os.getenv("MARIADB_ROOT_PASSWORD_FILE")
-        if password_file:
-            with open(password_file, "r") as file:
-                password = file.read()
-        else:
-            password = os.getenv("MARIADB_ROOT_PASSWORD")
-        host = os.getenv("MARIADB_HOST")
-        database = os.getenv("MARIADB_DATABASE")
-        self.client = MariadbClient(
-            table,
-            user=user,
-            password=password,
-            host=host,
-            database=database,
-        )
+        info = login_info()
+        self.client = MariadbClient(table, **info)
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def process_item(self, item, spider):
@@ -157,22 +157,8 @@ class DailyTradingPipeline:
             spider: The spider instance.
         """
         table = MariadbTable(self.table_name, self.data_type)
-        user = "root"
-        password_file = os.getenv("MARIADB_ROOT_PASSWORD_FILE")
-        if password_file:
-            with open(password_file, "r") as file:
-                password = file.read()
-        else:
-            password = os.getenv("MARIADB_ROOT_PASSWORD")
-        host = os.getenv("MARIADB_HOST")
-        database = os.getenv("MARIADB_DATABASE")
-        self.client = MariadbClient(
-            table,
-            user=user,
-            password=password,
-            host=host,
-            database=database,
-        )
+        info = login_info()
+        self.client = MariadbClient(table, **info)
         self.logger = logging.getLogger(self.__class__.__name__)
         # Create check table
         self._check_table = MariadbTable(

@@ -1,0 +1,4 @@
+# Tests requirements
+pytest
+scrapy
+mariadb

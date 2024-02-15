@@ -1,0 +1,28 @@
+[project]
+name = "taiwan_stock_analysis"
+version = "0.0.1"
+authors = [
+  { name="komark06", email="komark06@gmail.com" },
+]
+description = "A web crawler for taiwan stock market."
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "taiwan_stock_analysis"}
+
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+
+[tool.pre_commit]
+version = "pre-commit"

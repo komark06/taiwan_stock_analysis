@@ -148,6 +148,8 @@ class MariadbClient:
     """
 
     _table: MariadbTable
+    _cursor: [mariadb.cursors.Cursor | None] = None
+    _connection: mariadb.connections.Connection | None = field(init=False)
     _: KW_ONLY
     user: InitVar[str]
     password: InitVar[str]
@@ -171,15 +173,25 @@ class MariadbClient:
         - database (str): The database name to connect to MariaDB.
 
         Sets up the _connection and _cursor for database operations.
+        If _cursor is None, create a new connection to MariaDB and then
+        use connection to create cursor.
         If table doesn't existed, create it.
         """
-        self._connection = mariadb.connect(
-            user=user,
-            password=password,
-            host=host,
-            database=database,
-        )
-        self._cursor = self._connection.cursor()
+        if not self._cursor:
+            self._connection = mariadb.connect(
+                user=user,
+                password=password,
+                host=host,
+                database=database,
+            )
+            self._cursor = self.cursor()
+        elif isinstance(self._cursor, mariadb.cursors.Cursor):
+            self._connection = None
+        else:
+            raise ValueError(
+                f"The type of cursor is {type(self._cursor)}. "
+                "It must be instance of mariadb.cursors.Cursor."
+            )
         self.execute(self._table.table_query)
 
     def __len__(self) -> int:
@@ -187,7 +199,9 @@ class MariadbClient:
 
     def cursor(self):
         """Return cursor of database connection."""
-        return self._connection.cursor()
+        if self._connection:
+            return self._connection.cursor()
+        return self._cursor
 
     def execute(self, sql: str, parameters=(), /):
         """
@@ -219,10 +233,11 @@ class MariadbClient:
 
     def commit(self):
         """Commit to SQL database."""
-        self._connection.commit()
+        self._cursor.connection.commit()
 
     def close(self):
         """Close connection and cursor of SQL database."""
-        self._cursor.close()
         self.commit()
-        self._connection.close()
+        self._cursor.close()
+        if self._connection:
+            self._connection.close()

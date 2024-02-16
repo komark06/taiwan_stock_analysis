@@ -8,7 +8,7 @@ import mariadb
 from scrapy import Request, Spider
 from scrapy.http import Response
 
-from ..pipelines import DailyTradingPipeline, StockInfoPipeline, login_info
+from ..pipelines import DailyTradingRecord, StockInfoPipeline, login_info
 
 
 class DailyTradingSpider(Spider):
@@ -59,7 +59,7 @@ class DailyTradingSpider(Spider):
 
             If exist, return True. Else, return False.
             """
-            table = DailyTradingPipeline.check_table_name
+            table = DailyTradingRecord.table_name
             data = (year, month, symbol)
             self.cursor.execute(
                 f"SELECT * from {table} WHERE year=? AND "

@@ -90,6 +90,23 @@ class StockInfoPipeline:
         self.client.close()
 
 
+class DailyTradingRecord:
+    data_type = [
+        SmallInt("symbol", attribute=UNSIGNED, primary_key=True),
+        SmallInt("year", attribute=UNSIGNED, primary_key=True),
+        TinyInt("month", attribute=UNSIGNED, primary_key=True),
+        Text("update_time"),
+    ]
+    table_name = "stock_daily_trading_record"
+
+    @property
+    def table(self):
+        """
+        Return MariadbTable composed of table_name and data_type.
+        """
+        return MariadbTable(self.table_name, self.data_type)
+
+
 class DailyTradingPipeline:
     """
     A class for processing daily trading information of stock.
@@ -103,20 +120,6 @@ class DailyTradingPipeline:
         table_name (str): The name of SQL table for storing update time.
     """
 
-    data_type = {
-        "symbol": ("SMALLINT", "UNSIGNED"),
-        "year": ("SMALLINT", "UNSIGNED"),
-        "month": ("TINYINT", "UNSIGNED"),
-        "day": ("TINYINT", "UNSIGNED"),
-        "volume": ("BIGINT", "UNSIGNED"),
-        "value": ("BIGINT", "UNSIGNED"),
-        "open": ("DECIMAL(8, 3)",),
-        "highest": ("DECIMAL(8, 3)",),
-        "lowest": ("DECIMAL(8, 3)",),
-        "closing": ("DECIMAL(8, 3)",),
-        "delta": ("VARCHAR(10)",),
-        "transaction_volume": ("INTEGER",),
-    }
     data_type = [
         SmallInt("symbol", attribute=UNSIGNED, primary_key=True),
         SmallInt("year", attribute=UNSIGNED, primary_key=True),
@@ -132,20 +135,6 @@ class DailyTradingPipeline:
         Integer("transaction_volume"),
     ]
     table_name = "stock_daily_trading"
-    check_data_type = [
-        SmallInt("symbol", attribute=UNSIGNED, primary_key=True),
-        SmallInt("year", attribute=UNSIGNED, primary_key=True),
-        TinyInt("month", attribute=UNSIGNED, primary_key=True),
-        Text("update_time"),
-    ]
-    check_table_name = "check_table"
-
-    def _create_check_table(self):
-        """Create check table if needed."""
-        query = ", ".join(
-            column.table_query() for column in self.check_data_type
-        )
-        self.cursor.execute(query)
 
     def open_spider(self, spider):
         """
@@ -159,13 +148,10 @@ class DailyTradingPipeline:
         table = MariadbTable(self.table_name, self.data_type)
         info = login_info()
         self.client = MariadbClient(table, **info)
-        self.logger = logging.getLogger(self.__class__.__name__)
-        # Create check table
-        self._check_table = MariadbTable(
-            self.check_table_name, self.check_data_type
+        self.record_client = MariadbClient(
+            DailyTradingRecord().table, self.client.cursor(), **info
         )
-        self.logger.info(f"SQL QUERY: {self._check_table.table_query}")
-        self.client.execute(self._check_table.table_query)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def commit(self):
         """Commit to SQL database."""
@@ -200,14 +186,12 @@ class DailyTradingPipeline:
                 else:
                     formatted_data[name] = value.replace(",", "")
             self.client.insert(*formatted_data.values())
-
         current = datetime.utcnow() + timedelta(hours=8)  # Current taipei time
         year = int(formatted_data["year"])
         month = int(formatted_data["month"])
         if current.year != year or current.month != month:
-            self.client.execute(
-                self._check_table.insert_query,
-                (symbol, year, month, current.strftime("%Y/%m/%d/%H:%M")),
+            self.record_client.insert(
+                symbol, year, month, current.strftime("%Y/%m/%d/%H:%M")
             )
             self.logger.info(f"{symbol} {year}/{month} is done.")
         else:
@@ -226,3 +210,4 @@ class DailyTradingPipeline:
             spider: The spider instance.
         """
         self.client.close()
+        self.record_client.close()

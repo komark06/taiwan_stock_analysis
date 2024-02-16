@@ -20,8 +20,6 @@ class DailyTradingSpider(Spider):
             "taiwan_stock_analysis.pipelines.DailyTradingPipeline": 300,
         },
         "ROBOTSTXT_OBEY": False,
-        "TELNETCONSOLE_USERNAME": "komark",
-        "TELNETCONSOLE_PASSWORD": "123",
     }
     base_url = "https://www.twse.com.tw/rwd/en/afterTrading/STOCK_DAY"
 

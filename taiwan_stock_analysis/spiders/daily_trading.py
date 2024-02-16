@@ -8,7 +8,7 @@ import mariadb
 from scrapy import Request, Spider
 from scrapy.http import Response
 
-from ..pipelines import DailyTradingPipeline, StockInfoPipeline
+from ..pipelines import DailyTradingPipeline, StockInfoPipeline, login_info
 
 
 class DailyTradingSpider(Spider):
@@ -27,14 +27,8 @@ class DailyTradingSpider(Spider):
 
     def __init__(self, name: str | None = None, **kwargs: Any):
         super().__init__(name, **kwargs)
-        password_file = "/run/secrets/db-password"
-        with open(password_file, "r") as ps:
-            self.connection = mariadb.connect(
-                user="root",
-                password=ps.read(),
-                host="db",
-                database="example",
-            )
+        info = login_info()
+        self.connection = mariadb.connect(**info)
         self.cursor = self.connection.cursor()
 
     def start_requests(self):

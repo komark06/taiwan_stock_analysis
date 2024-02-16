@@ -209,5 +209,5 @@ class DailyTradingPipeline:
         Parameters:
             spider: The spider instance.
         """
-        self.client.close()
         self.record_client.close()
+        self.client.close()

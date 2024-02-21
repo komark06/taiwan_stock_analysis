@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from scrapy import Spider, signals
+from scrapy import signals
 from scrapy.utils.test import get_crawler
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase
@@ -11,18 +11,13 @@ from tests import sample_data_dir, sample_parm
 from tests.mockserver import MockServer
 
 
-class MockServerSpider(Spider):
-    def __init__(self, mockserver=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.mockserver = mockserver
-
-
-class NoCustomSpider(MockServerSpider):
+class NoCustomSpider:
     custom_settings = {}
 
-    def __init__(self, url, *args, **kwargs):
+    def __init__(self, url=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.start_urls = [url]
+        if url:
+            self.start_urls = [url]
 
 
 class TestStockInfoSpider(NoCustomSpider, StockInfoSpider):
@@ -56,9 +51,7 @@ class StockInfoSpiderTestCase(TestCase):
         filename = "stock_info.html"
         crawler = get_crawler(self.spider)
         crawler.signals.connect(on_item_scraped, signals.item_scraped)
-        yield crawler.crawl(
-            self.mockserver.url(file_url(filename)), mockserver=self.mockserver
-        )
+        yield crawler.crawl(self.mockserver.url(file_url(filename)))
         self.assertEqual(
             len(items), 47, msg="Spider doesn't scrape exact 47 pages."
         )

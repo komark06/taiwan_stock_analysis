@@ -1,4 +1,6 @@
-from multiprocessing import Process, Queue
+import os
+import sys
+from subprocess import PIPE, Popen
 
 from twisted.internet import reactor
 from twisted.web.resource import Resource
@@ -8,7 +10,17 @@ from twisted.web.static import File
 from tests import sample_data_dir, sample_parm
 
 
+def mockserver_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = sys.executable
+    return env
+
+
 class Root(Resource):
+    def __init__(self):
+        Resource.__init__(self)
+        self.putChild(sample_parm.encode(), File(sample_data_dir))
+
     def getChild(self, name, request):
         return self
 
@@ -16,27 +28,34 @@ class Root(Resource):
         return b"Root page.\n"
 
 
-def run_server(queue: Queue):
-    root = Root()
-    root.putChild(sample_parm.encode(), File(sample_data_dir))
-    factory = Site(root)
-    httpHost = reactor.listenTCP(0, factory)
-    queue.put(httpHost.getHost().port)
-    reactor.run()
-
-
 class MockServer:
     def __enter__(self):
-        queue = Queue()
-        self.proc = Process(target=run_server, args=(queue,))
-        self.proc.start()
-        http_port = queue.get()
-        self.http_address = f"http://127.0.0.1:{http_port}"
+        self.proc = Popen(
+            [sys.executable, "-u", "-m", "tests.mockserver", "-t", "http"],
+            stdout=PIPE,
+            env=mockserver_env(),
+        )
+        http_address = self.proc.stdout.readline().strip().decode("ascii")
+        self.host = http_address.replace("0.0.0.0", "127.0.0.1")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.proc.kill()
+        self.proc.communicate()
 
-    def url(self, path, is_secure=False):
-        host = self.http_address
-        return host + path
+    def url(self, path):
+        return self.host + path
+
+
+if __name__ == "__main__":
+    root = Root()
+    factory = Site(root)
+    httpPort = reactor.listenTCP(0, factory)
+
+    def print_listening():
+        httpHost = httpPort.getHost()
+        httpAddress = f"http://{httpHost.host}:{httpHost.port}"
+        print(httpAddress)
+
+    reactor.callWhenRunning(print_listening)
+    reactor.run()

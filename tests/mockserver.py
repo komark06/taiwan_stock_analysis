@@ -8,6 +8,7 @@ from twisted.web.server import Site
 from twisted.web.static import File
 
 from tests import sample_data_dir, sample_parm
+from tests.daily_data import daily_json
 
 
 def mockserver_env() -> dict[str, str]:
@@ -16,10 +17,24 @@ def mockserver_env() -> dict[str, str]:
     return env
 
 
+class DailyTrading(Resource):
+    isLeaf = True
+
+    def render(self, request):
+        date = request.args[b"date"][0].decode()
+        symbol = int(request.args[b"stockNo"][0])
+        year = date[:4]
+        month = date[4:6]
+        day = date[-2:]
+        content = daily_json(symbol, year, month, day)
+        return content.encode()
+
+
 class Root(Resource):
     def __init__(self):
         Resource.__init__(self)
         self.putChild(sample_parm.encode(), File(sample_data_dir))
+        self.putChild(b"daily", DailyTrading())
 
     def getChild(self, name, request):
         return self

@@ -1,3 +1,8 @@
+x-environment: &default-environment
+  TZ: Asia/Taipei
+  MARIADB_DATABASE: example
+  MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
+
 volumes:
     db-data:
 
@@ -15,9 +20,7 @@ services:
         image: mariadb:lts
         restart: always
         environment:
-            - TZ=Asia/Taipei
-            - MARIADB_DATABASE=example
-            - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db-password
+            <<: *default-environment
         secrets:
             - db-password
             - user-password
@@ -44,11 +47,9 @@ services:
             db:
                 condition: service_healthy
         environment:
-            - TZ=Asia/Taipei
-            - PYTHONUNBUFFERED=1
-            - MARIADB_HOST=db
-            - MARIADB_DATABASE=example
-            - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/db-password
+            <<: *default-environment
+            PYTHONUNBUFFERED: 1
+            MARIADB_HOST: db
         secrets:
             - db-password
         volumes:
@@ -74,7 +75,7 @@ services:
                 condition: service_healthy
         stop_grace_period: 30s
         environment:
-            - TZ=Asia/Taipei
+            <<: *default-environment
         secrets:
             - db-password
         volumes:

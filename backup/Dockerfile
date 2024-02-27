@@ -12,4 +12,4 @@ RUN crontab cronjob
 
 RUN chmod +x backup.sh
 
-CMD ["/usr/sbin/crond", "-f", "-d", "8"]
+CMD ["crond", "-f", "-d", "8"]

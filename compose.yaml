@@ -12,9 +12,6 @@ secrets:
     user-password:
         file: db/user-password
 
-networks:
-    backnet:
-
 services:
     db:
         image: mariadb:lts
@@ -27,11 +24,6 @@ services:
         volumes:
             - db-data:/var/lib/mysql
             - ./data:/docker-entrypoint-initdb.d
-        networks:
-            - backnet
-        expose:
-            - 3306
-            - 33060
         healthcheck:
             test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
             start_period: 2m
@@ -55,8 +47,6 @@ services:
             - db-password
         volumes:
             - ./data:/data
-        networks:
-            - backnet
 
     backup:
         build:
@@ -73,6 +63,4 @@ services:
             - db-password
         volumes:
             - ./data:/app/data
-        networks:
-            - backnet
 

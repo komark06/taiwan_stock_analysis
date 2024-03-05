@@ -22,7 +22,8 @@ RUN /usr/src/.venv/bin/python -c "import mariadb; print(mariadb.__version__)"
 FROM python:3.12-slim AS Runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    mariadb-client \
+    libmariadb3 \
+    libmariadb-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/src/.venv/ /usr/src/.venv/

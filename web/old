@@ -1,0 +1,37 @@
+FROM python:3.12-slim AS Builder
+
+ENV PYTHONDONTWRITEBYTECODE 1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmariadb3 \
+    libmariadb-dev \
+    gcc
+
+COPY web/requirements.txt .
+
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
+
+FROM python:3.12-slim AS Runner
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmariadb3 \
+    libmariadb-dev
+
+COPY --from=builder /wheels /wheels
+
+RUN pip install --no-cache /wheels/*
+
+RUN python -c "import mariadb; print(mariadb.__version__)"
+
+RUN useradd -m eva
+
+WORKDIR /app
+
+COPY web/main.py .
+
+COPY taiwan_stock_analysis ./taiwan_stock_analysis
+
+USER eva
+
+CMD ["gunicorn", "main:app","--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+

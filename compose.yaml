@@ -2,6 +2,7 @@ x-environment: &default-environment
   TZ: Asia/Taipei
   MARIADB_DATABASE: example
   MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
+  MARIADB_HOST: db
 
 volumes:
     db-data:
@@ -42,7 +43,6 @@ services:
         environment:
             <<: *default-environment
             PYTHONUNBUFFERED: 1
-            MARIADB_HOST: db
         secrets:
             - db-password
         volumes:
@@ -64,3 +64,26 @@ services:
         volumes:
             - ./data:/app/data
 
+    nginx:
+        build:
+          context: nginx
+        restart: always
+        environment:
+            <<: *default-environment
+        ports:
+          - "5000:8080"
+
+    web:
+        build:
+          context: .
+          dockerfile: web/Dockerfile
+        restart: always
+        depends_on:
+          nginx:
+            condition: service_started
+          db:
+            condition: service_healthy
+        environment:
+            <<: *default-environment
+        secrets:
+            - db-password

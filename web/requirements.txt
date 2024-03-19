@@ -1,0 +1,4 @@
+mariadb==1.1.10; python_version >= '3.10'
+fastapi; python_version >= '3.10'
+gunicorn; python_version >= '3.10'
+uvicorn; python_version >= '3.10'

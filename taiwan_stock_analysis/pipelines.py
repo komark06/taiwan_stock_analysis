@@ -1,6 +1,17 @@
 import logging
 import os
 from datetime import datetime, timedelta
+from typing import Optional
+
+import sqlalchemy
+from sqlalchemy import Date, String, create_engine
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    Session,
+    mapped_column,
+)
 
 from taiwan_stock_analysis.database.datatype import (
     UNSIGNED,
@@ -16,58 +27,68 @@ from taiwan_stock_analysis.database.datatype import (
 from .database.mariadbclient import MariadbClient, MariadbTable
 
 
-def login_info() -> dict:
-    """Return login info of Mariadb"""
-    info = {"user": "root"}
+class Base(MappedAsDataclass, DeclarativeBase):
+    pass
+
+
+class StockInfo(Base):
+    __tablename__ = "stock_info_test"
+    classification: Mapped[str] = mapped_column(String(50))
+    symbol: Mapped[str] = mapped_column(String(25))
+    name: Mapped[str] = mapped_column(String(50))
+    ISINCode: Mapped[str] = mapped_column(String(25), primary_key=True)
+    listing_date: Mapped[str] = mapped_column(Date)
+    market_category: Mapped[str] = mapped_column(String(50))
+    industry_category: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )
+    CFICode: Mapped[str] = mapped_column(String(25))
+    remark: Mapped[Optional[str]] = mapped_column(String(25), nullable=True)
+
+
+def login_info():
+    pass
+
+
+def init_engine() -> sqlalchemy.engine.Engine:
+    """
+    Initialize the SQLAlchemy engine and return it.
+    """
     password_file = os.getenv("MARIADB_ROOT_PASSWORD_FILE")
-    if password_file:
-        with open(password_file, "r") as file:
-            info["password"] = file.read()
-    else:
-        info["password"] = os.getenv("MARIADB_ROOT_PASSWORD")
-    info["host"] = os.getenv("MARIADB_HOST")
-    info["database"] = os.getenv("MARIADB_DATABASE")
-    return info
+    with open(password_file, "r") as file:
+        password = file.read()
+    host = os.getenv("MARIADB_HOST")
+    database = os.getenv("MARIADB_DATABASE")
+    url = (
+        "mariadb+mariadbconnector://root:"
+        f"{password}@{host}/{database}?charset=utf8mb4"
+    )
+    return create_engine(
+        url,
+        pool_recycle=3600,
+    )
 
 
 class StockInfoPipeline:
     """
     A class for processing information of stock.
-
-    Attributes:
-        data_type (List[DateType]): A list composed of DataType used to
-        represent a SQL table.
-        table_name (str): The name of SQL table.
     """
-
-    data_type = [
-        VarChar("classification", 25),
-        VarChar("symbol", 25, primary_key=True),
-        VarChar("name", 25),
-        VarChar("ISINCode", 25),
-        VarChar("listing_date", 25),
-        VarChar("market_category", 25),
-        VarChar("industry_category", 25),
-        VarChar("CFICode", 25),
-        VarChar("remark", 25),
-    ]
-    table_name = "stock_info"
 
     def open_spider(self, spider):
         """
-        Open the spider and initialize the MariaDB client.
+        Initialize the SQLAlchemy engine and create table.
 
         Parameters:
             spider: The spider instance.
         """
-        table = MariadbTable(self.table_name, self.data_type)
-        info = login_info()
-        self.client = MariadbClient(table, **info)
+        engine = init_engine()
+        StockInfo.metadata.create_all(engine)
+        self.session = Session(engine)
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def process_item(self, item, spider):
         """
-        Process the scraped item and insert it into the MariaDB table.
+        Process the scraped item and insert it into database.
 
         Parameters:
             item: The item to be processed.
@@ -76,18 +97,20 @@ class StockInfoPipeline:
         Returns:
             item: The processed item.
         """
-        self.client.insert(*item.values())
+        obj = StockInfo(**item)
+        self.session.merge(obj)
         self.logger.info(item)
         return item
 
     def close_spider(self, spider):
         """
-        Close MariaDB client connection.
+        Commit transaction and close SQLAlchemy session.
 
         Parameters:
             spider: The spider instance.
         """
-        self.client.close()
+        self.session.commit()
+        self.session.close()
 
 
 class DailyTradingRecord:

@@ -1,26 +1,27 @@
+import datetime
 import json
 import random
 import re
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
 
-import mariadb
 from scrapy import Request, Spider
 from scrapy.http import Response
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from ..pipelines import DailyTradingRecord, StockInfoPipeline, login_info
+from ..pipelines import DailyTradingRecord, StockInfo, init_engine
 
 
 class AbstractSymbolCursor(ABC):
     @abstractmethod
-    def get_symbols(self) -> list[tuple[int, str]]:
+    def get_symbol_info(self) -> list[tuple[int, datetime.date]]:
         """
         Get symbol number and listing date of all symbols.
         """
         pass
 
     @abstractmethod
-    def exist(self, year: int, month: int, symbol: int) -> bool:
+    def exist(self, symbol: int, timestamp: datetime.date) -> bool:
         """
         Verify the presence of symbol data for a particular date.
 
@@ -38,33 +39,31 @@ class AbstractSymbolCursor(ABC):
 
 class SymbolCursor(AbstractSymbolCursor):
     def __init__(self):
-        info = login_info()
-        self.connection = mariadb.connect(**info)
-        self.cursor = self.connection.cursor()
+        engine = init_engine()
+        DailyTradingRecord.metadata.create_all(self.engine)
+        self.session = Session(engine)
 
-    def get_symbols(self) -> list[tuple[int, str]]:
-        table = StockInfoPipeline.table_name
-        self.cursor.execute(
-            f"SELECT symbol,listing_date FROM {table} "
-            "WHERE classification='股票'"
+    def get_symbol_info(self) -> list[tuple[int, datetime.date]]:
+        query = select(StockInfo).filter_by(
+            classification="股票",
         )
-        symbols = [(int(item[0]), item[1]) for item in self.cursor]
-        return symbols
+        result = self.session.scalars(query)
+        symbol_info = [
+            {
+                "symbol": int(item.symbol),
+                "listing date": item.listing_date,
+            }
+            for item in result
+        ]
+        return symbol_info
 
-    def exist(self, year: int, month: int, symbol: int) -> bool:
-        table = DailyTradingRecord.table_name
-        data = (year, month, symbol)
-        self.cursor.execute(
-            f"SELECT * from {table} WHERE year=? AND " "month=? AND symbol=?",
-            data,
-        )
-        if self.cursor.fetchone():
+    def exist(self, symbol: int, timestamp: datetime.date) -> bool:
+        if self.session.get(DailyTradingRecord, (symbol, timestamp)):
             return True
         return False
 
     def close(self):
-        self.cursor.close()
-        self.connection.close()
+        self.session.close()
 
 
 class DailyTradingSpider(Spider):
@@ -94,70 +93,64 @@ class DailyTradingSpider(Spider):
                 "https://www.twse.com.tw/rwd/en/afterTrading/STOCK_DAY"
             )
 
-    def get_symbols(self):
-        return self.cursor.get_symbols()
+    def get_symbol_info(self) -> list[tuple[int, datetime.date]]:
+        return self.cursor.get_symbol_info()
 
-    def exist(self, year, month, symbol):
-        return self.cursor.exist(year, month, symbol)
+    def exist(self, symbol: int, timestamp: datetime.date) -> bool:
+        return self.cursor.exist(symbol, timestamp)
+
+    def generate_url(self, symbol: int, date: datetime.date):
+        date_str = date.strftime("%Y%m%d")
+        return (
+            f"{self.base_url}?date={date_str}&stockNo={symbol}&response=json"
+        )
 
     def start_requests(self):
-        def next_month(year: int, month: int):
+        def next_month(date: datetime.date) -> datetime.datetime.date:
             """
             Return date of next month.
             """
+            year = date.year
+            month = date.month
             if month == 12:
                 year += 1
                 month = 1
             else:
                 month += 1
-            return year, month
+            return datetime.date(year, month, 1)
 
-        symbols = self.get_symbols()
-        start_year = 2010
-        start_month = 1
-        for item in random.sample(symbols, len(symbols)):
-            symbol = item[0]
-            listing_date = item[1]
-            year, month, day = map(int, listing_date.split("/"))
-            current = datetime.utcnow() + timedelta(
+        symbol_info = self.get_symbol_info()
+        start_date = datetime.date(2010, 1, 1)
+        for info in random.sample(symbol_info, len(symbol_info)):
+            symbol = info["symbol"]
+            date = info["listing date"]
+            current = datetime.datetime.utcnow() + datetime.timedelta(
                 hours=8
             )  # Current taipei time
             """
             Begin from the listing date if the listing date is more
             recent than the specified start date.
             """
-            if year < start_year:
-                year = start_year
-                month = start_month
-            end_year, end_month = next_month(current.year, current.month)
-            while end_year != year or end_month != month:
-                if not self.exist(year, month, symbol):
+            if date < start_date:
+                date = start_date
+            end_date = next_month(current)
+            while end_date != date:
+                if not self.exist(symbol, date):
                     yield Request(
-                        url=self.generate_url(year, month, symbol),
+                        url=self.generate_url(symbol, date),
                         callback=self.parse,
                         cb_kwargs={
-                            "year": year,
-                            "month": month,
                             "request_symbol": symbol,
+                            "request_date": date,
                         },
                     )
-                year, month = next_month(year, month)
-
-    def generate_date(self, year: int, month: int):
-        return f"{year}{month:02d}01"
-
-    def generate_url(self, year: int, month: int, symbol: int):
-        date_str = self.generate_date(year, month)
-        return (
-            f"{self.base_url}?date={date_str}&stockNo={symbol}&response=json"
-        )
+                date = next_month(date)
 
     def parse(
         self,
         response: Response,
-        year: int,
-        month: int,
         request_symbol: int,
+        request_date: datetime.date,
     ):
         js = json.loads(response.text)
         if js["stat"] != "OK":
@@ -165,18 +158,19 @@ class DailyTradingSpider(Spider):
             return
         title = js["title"].strip()
         date = re.split(r"\s+", title)[0]
-        if f"{year}/{month:02d}" != date:
+        if request_date.strftime("%Y/%m") != date:
             self.logger.warning(
-                f"Wrong date. Request_symbol:{request_symbol}, year:{year}"
-                f", month:{month}, url: {response.url}\n{title}\n"
+                f"Wrong date. Request_symbol:{request_symbol}, "
+                f"year:{request_date.year}, month:{request_date.month}, "
+                f"url: {response.url}\n{title}\n"
             )
             return
         symbol = int(re.split(r"\s+", title)[-1])
         if request_symbol != symbol:
             self.logger.warning(
                 f"Wrong symbol. Request_symbol:{request_symbol}, "
-                f"symbol:{symbol}, year:{year}, month:{month}, "
-                f"url: {response.url}\n{title}\n"
+                f"symbol:{symbol}, year:{request_date.year}, "
+                f"month:{request_date.month}, url: {response.url}\n{title}\n"
             )
             return
-        yield {"symbol": symbol, "fields": js["fields"], "data": js["data"]}
+        yield {"symbol": symbol, "data": js["data"]}

@@ -79,11 +79,13 @@ class StockInfoSpiderTestCase(TestCase):
 
 
 class FakeSymbolCursor(AbstractSymbolCursor):
-    def get_symbols(self) -> list[tuple[int, str]]:
-        current = datetime.utcnow() + timedelta(hours=8)  # Current taipei time
-        return [(1101, current.strftime("%Y/%m/%d"))]
+    def get_symbol_info(self) -> list[tuple[int, datetime.date]]:
+        current = datetime.now(datetime.UTC) + timedelta(
+            hours=8
+        )  # Current taipei time
+        return [(1101, current.date())]
 
-    def exist(self, year: int, month: int, symbol: int) -> bool:
+    def exist(self, symbol: int, timestamp: datetime.date) -> bool:
         return False
 
     def close(self):

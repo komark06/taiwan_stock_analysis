@@ -1,7 +1,5 @@
 import scrapy
 
-from ..pipelines import StockInfoPipeline
-
 
 class StockInfoSpider(scrapy.Spider):
     name = "stock_info"
@@ -13,7 +11,17 @@ class StockInfoSpider(scrapy.Spider):
     start_urls = ["https://isin.twse.com.tw/isin/C_public.jsp?strMode=2"]
 
     def parse(self, response):
-        type_names = [column.name for column in StockInfoPipeline.data_type]
+        type_names = [
+            "classification",
+            "symbol",
+            "name",
+            "ISINCode",
+            "listing_date",
+            "market_category",
+            "industry_category",
+            "CFICode",
+            "remark",
+        ]
         for tr in response.selector.xpath(".//tr[td[@bgcolor='#FAFAD2']]"):
             found_category = tr.xpath("td[@colspan]/b/text()").get()
             if found_category:

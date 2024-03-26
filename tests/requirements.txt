@@ -2,3 +2,4 @@
 pytest
 scrapy
 mariadb
+sqlalchemy

@@ -40,7 +40,7 @@ class AbstractSymbolCursor(ABC):
 class SymbolCursor(AbstractSymbolCursor):
     def __init__(self):
         engine = init_engine()
-        DailyTradingRecord.metadata.create_all(self.engine)
+        DailyTradingRecord.metadata.create_all(engine)
         self.session = Session(engine)
 
     def get_symbol_info(self) -> list[tuple[int, datetime.date]]:

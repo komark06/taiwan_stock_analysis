@@ -28,16 +28,14 @@ COPY --from=builder /usr/src/.venv/ /usr/src/.venv/
 
 ENV PATH=/usr/src/.venv/bin:$PATH
 
+RUN useradd -m eva
+
 WORKDIR /app
 
 COPY run.py scrapy.cfg .
 
 COPY taiwan_stock_analysis ./taiwan_stock_analysis
 
-# Create a non-root user named "eva"
-RUN useradd -m eva
-
-# Switch to the "eva" user
 USER eva
 
 CMD ["python", "/app/run.py"]

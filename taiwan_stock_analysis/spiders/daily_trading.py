@@ -9,7 +9,11 @@ from scrapy.http import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..pipelines import DailyTradingRecord, StockInfo, init_engine
+from taiwan_stock_analysis.table import (
+    DailyTradingRecord,
+    StockInfo,
+    init_engine,
+)
 
 
 class AbstractSymbolCursor(ABC):

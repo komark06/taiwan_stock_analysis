@@ -17,8 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pipenv sync
 
-RUN /usr/src/.venv/bin/python -c "import mariadb; print(mariadb.__version__)"
-
 FROM python:3.12-slim AS Runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,8 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/src/.venv/ /usr/src/.venv/
 
 ENV PATH=/usr/src/.venv/bin:$PATH
-
-RUN python -c "import mariadb; print(mariadb.__version__)"
 
 WORKDIR /app
 

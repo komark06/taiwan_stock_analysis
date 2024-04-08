@@ -4,63 +4,61 @@ x-environment: &default-environment
   MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
 
 volumes:
-    db-data:
+  db-data:
 
 secrets:
-    db-password:
-        file: db/db-password
-    user-password:
-        file: db/user-password
+  db-password:
+    file: db/db-password
+  user-password:
+    file: db/user-password
 
 services:
-    db:
-        image: mariadb:lts
-        restart: always
-        environment:
-            <<: *default-environment
-        secrets:
-            - db-password
-            - user-password
-        volumes:
-            - db-data:/var/lib/mysql
-            - ./data:/docker-entrypoint-initdb.d
-        healthcheck:
-            test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
-            start_period: 2m
-            start_interval: 10s
-            interval: 3s
-            timeout: 5s
-            retries: 3
+  db:
+    image: mariadb:lts
+    restart: always
+    environment:
+      <<: *default-environment
+    secrets:
+      - db-password
+      - user-password
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./data:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 2m
+      start_interval: 10s
+      interval: 3s
+      timeout: 5s
+      retries: 3
 
-    app:
-        build:
-            context: .
-        restart : always
-        depends_on:
-            db:
-                condition: service_healthy
-        environment:
-            <<: *default-environment
-            PYTHONUNBUFFERED: 1
-            MARIADB_HOST: db
-        secrets:
-            - db-password
-        volumes:
-            - ./data:/data
-
-    backup:
-        build:
-          context: backup
-        restart : always
-        depends_on:
-            db:
-                condition: service_healthy
-        stop_grace_period: 30s
-        environment:
-            <<: *default-environment
-            MAX_BACKUPS: 30
-        secrets:
-            - db-password
-        volumes:
-            - ./data:/app/data
-
+  app:
+    build:
+      context: .
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *default-environment
+      PYTHONUNBUFFERED: 1
+      MARIADB_HOST: db
+    secrets:
+      - db-password
+    volumes:
+      - ./data:/data
+  backup:
+    build:
+      context: services/backup
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 30s
+    environment:
+      <<: *default-environment
+      MAX_BACKUPS: 30
+    secrets:
+      - db-password
+    volumes:
+      - ./data:/app/data

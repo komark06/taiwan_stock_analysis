@@ -32,11 +32,11 @@ RUN useradd -m eva
 
 WORKDIR /app
 
-COPY run.py scrapy.cfg .
+COPY scrapy.cfg .
 
 COPY taiwan_stock_analysis ./taiwan_stock_analysis
 
 USER eva
 
-CMD ["python", "/app/run.py"]
+CMD ["python", "/app/taiwan_stock_analysis/run.py"]
 

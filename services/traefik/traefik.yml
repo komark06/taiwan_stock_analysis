@@ -1,0 +1,42 @@
+log:
+  level: INFO
+providers:
+  docker:
+    endpoint: "tcp://docker-socket-proxy:2375"
+    exposedByDefault: false
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+
+certificatesResolvers:
+  myresolver:
+    # Enable ACME (Let's Encrypt): automatic SSL.
+    acme:
+      # Email address used for registration.
+      email: ${ACME_EMAIL}
+
+      # File or key used for certificates storage.
+      #
+      # Required
+      #
+      storage: "/letsencrypt/acme.json"
+
+      # CA server to use.
+      #
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+
+      # Use a TLS-ALPN-01 ACME challenge.
+      #
+      # Optional (but recommended)
+      #
+      tlsChallenge: {}
+      

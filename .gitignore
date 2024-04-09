@@ -160,10 +160,10 @@ cython_debug/
 #.idea/
 
 # Database backup
-data/*.xz
+db_assets/data/*.xz
 
 # Database password
-db/
+db_assets/security
 
 TODO
 

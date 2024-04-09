@@ -13,10 +13,10 @@ volumes:
   db-data:
 
 secrets:
-  db-password:
-    file: db/db-password
+  root-password:
+    file: db_assets/security/root-password
   user-password:
-    file: db/user-password
+    file: db_assets/security/user-password
 
 services:
   db:
@@ -24,11 +24,11 @@ services:
     restart: always
     environment:
       <<: *default-environment
-      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/root-password
     networks:
       - db-net
     secrets:
-      - db-password
+      - root-password
       - user-password
     volumes:
       - db-data:/var/lib/mysql
@@ -56,8 +56,7 @@ services:
       - db-net
     secrets:
       - user-password
-    volumes:
-      - ./data:/data
+
   backup:
     build:
       context: services/backup
@@ -72,9 +71,9 @@ services:
     networks:
       - db-net
     secrets:
-      - db-password
+      - root-password
     volumes:
-      - ./data:/app/data
+      - ./db_assets/data:/app/data
 
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy

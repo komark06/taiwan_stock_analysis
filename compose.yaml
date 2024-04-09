@@ -39,7 +39,7 @@ services:
       timeout: 5s
       retries: 3
 
-  app:
+  crawler:
     build:
       context: .
     restart: always

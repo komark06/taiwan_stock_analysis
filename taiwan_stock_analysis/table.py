@@ -92,13 +92,14 @@ def init_engine(echo: bool = False) -> sqlalchemy.engine.Engine:
     Returns:
         sqlalchemy.engine.Engine: The SQLAlchemy engine instance.
     """
-    password_file = os.getenv("MARIADB_ROOT_PASSWORD_FILE")
+    password_file = os.getenv("MARIADB_PASSWORD_FILE")
     with open(password_file, "r") as file:
         password = file.read()
     host = os.getenv("MARIADB_HOST")
     database = os.getenv("MARIADB_DATABASE")
+    user = os.getenv("MARIADB_USER")
     url = (
-        "mariadb+mariadbconnector://root:"
+        f"mariadb+mariadbconnector://{user}:"
         f"{password}@{host}/{database}?charset=utf8mb4"
     )
     return create_engine(

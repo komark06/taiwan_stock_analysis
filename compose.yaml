@@ -1,7 +1,8 @@
 x-environment: &default-environment
   TZ: Asia/Taipei
   MARIADB_DATABASE: example
-  MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
+  MARIADB_USER: eva
+  MARIADB_PASSWORD_FILE: /run/secrets/user-password
 
 networks:
   default:
@@ -23,6 +24,7 @@ services:
     restart: always
     environment:
       <<: *default-environment
+      MARIADB_ROOT_PASSWORD_FILE: /run/secrets/db-password
     networks:
       - db-net
     secrets:
@@ -53,7 +55,7 @@ services:
     networks:
       - db-net
     secrets:
-      - db-password
+      - user-password
     volumes:
       - ./data:/data
   backup:

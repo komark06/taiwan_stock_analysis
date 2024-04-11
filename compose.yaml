@@ -96,6 +96,8 @@ services:
   traefik:
     build:
       context: services/traefik
+    command:
+      - --certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}
     depends_on:
       docker-socket-proxy:
         condition: service_healthy

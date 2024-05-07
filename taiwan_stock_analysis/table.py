@@ -4,6 +4,7 @@ from typing import Optional
 
 import sqlalchemy
 from sqlalchemy import (
+    BigInteger,
     Date,
     DateTime,
     Double,
@@ -55,7 +56,7 @@ class DailyTradingInfo(Base):
     symbol: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
     timestamp: Mapped[str] = mapped_column(Date, primary_key=True)
     volume: Mapped[int] = mapped_column(Integer)
-    value: Mapped[int] = mapped_column(Integer)
+    value: Mapped[int] = mapped_column(BigInteger)
     open: Mapped[float] = mapped_column(Double, nullable=True)
     highest: Mapped[float] = mapped_column(Double, nullable=True)
     lowest: Mapped[float] = mapped_column(Double, nullable=True)

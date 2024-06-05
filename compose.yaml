@@ -111,3 +111,36 @@ services:
     volumes:
       - ./services/traefik/letsencrypt:/letsencrypt
 
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+    develop:
+      watch:
+        - path: services/web/main.py
+          action: rebuild
+    restart: always
+    depends_on:
+      traefik:
+        condition: service_started
+      db:
+        condition: service_healthy
+    environment:
+      <<: *default-environment
+    networks:
+      - docker-proxy
+      - default
+      - db-net
+    expose: 
+      - "8000"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=taiwan_stock_analysis_default
+      - traefik.http.routers.web.rule=Host(`$DOMAIN`)
+      - traefik.http.routers.whoami.entrypoints=websecure
+      - traefik.http.routers.web.tls=true
+      - traefik.http.routers.web.tls.certresolver=myresolver
+      - traefik.http.middlewares.test-compress.compress=true
+      - traefik.http.middlewares.test-auth.basicauth.usersfile=./password
+    secrets:
+      - user-password

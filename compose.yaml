@@ -3,6 +3,7 @@ x-environment: &default-environment
   MARIADB_DATABASE: example
   MARIADB_USER: eva
   MARIADB_PASSWORD_FILE: /run/secrets/user-password
+  MARIADB_HOST: db
 
 networks:
   default:
@@ -51,7 +52,6 @@ services:
     environment:
       <<: *default-environment
       PYTHONUNBUFFERED: 1
-      MARIADB_HOST: db
     networks:
       - db-net
     secrets:
@@ -71,7 +71,7 @@ services:
     networks:
       - db-net
     secrets:
-      - root-password
+      - user-password
     volumes:
       - ./db_assets/data:/app/data
 
@@ -96,11 +96,12 @@ services:
   traefik:
     build:
       context: services/traefik
-    command:
-      - --certificatesresolvers.myresolver.acme.email=${ACME_EMAIL}
     depends_on:
       docker-socket-proxy:
         condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
     networks:
       - default
       - docker-proxy

@@ -5,6 +5,8 @@
 
 backup_folder="/app/data"
 database_name=${MARIADB_DATABASE}
+user=${MARIADB_USER}
+password=${MARIADB_PASSWORD_FILE}
 max_backups=30
 
 remove_old_backups() {
@@ -22,13 +24,14 @@ remove_old_backups() {
 perform_backup() {
     local date="$(date '+%Y-%m-%d')"
     local backup_file="/app/data/${MARIADB_DATABASE}_${date}.xz"
-    mariadb-dump --host=db --user=root --password="$(cat /run/secrets/db-password)" $database_name | xz -9 > $backup_file
+    mariadb-dump --host=db --user=$user --password=$(cat $password) $database_name | xz -9 > $backup_file
     if [ $? -eq 0 ]; then
         echo "$date: Backup succeed."
     else
         echo "$date: Backup FAIL!"
+        exit 1
     fi
 }
 
-remove_old_backups
 perform_backup
+remove_old_backups
